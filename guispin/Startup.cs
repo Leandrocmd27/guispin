@@ -2,32 +2,55 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
+using IdentityExample.Data;
+using IdentityExample.Middleware;
+using IdentityExample.Models;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
-using Microsoft.AspNetCore.Http;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.AspNetCore.Identity;
 
-namespace guispin
+namespace IdentityExample
 {
     public class Startup
     {
-        // This method gets called by the runtime. Use this method to add services to the container.
-        // For more information on how to configure your application, visit https://go.microsoft.com/fwlink/?LinkID=398940
         public void ConfigureServices(IServiceCollection services)
         {
+            services.AddIdentity<Student, IdentityRole>(options =>
+            {
+                options.Password.RequireDigit = true;
+                options.Password.RequiredLength = 7;
+                options.Password.RequireUppercase = true;
+
+                options.User.RequireUniqueEmail = true;
+            })
+            .AddEntityFrameworkStores<StudentContext>();
+
+            services.AddDbContext<StudentContext>(options =>
+                  options.UseSqlite("Data Source=student.db"));
+
+            services.AddMvc();
         }
 
-        // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.
-        public void Configure(IApplicationBuilder app, IHostingEnvironment env)
+        public void Configure(IApplicationBuilder app, IHostingEnvironment env, StudentContext studentContext)
         {
-            if (env.IsDevelopment())
-            {
-                app.UseDeveloperExceptionPage();
-            }
+            //studentContext.Database.EnsureDeleted();
+            //studentContext.Database.Migrate();
 
-            app.Run(async (context) =>
+            app.UseStaticFiles();
+
+            app.UseAuthentication();
+
+            app.UseNodeModules(env.ContentRootPath);
+
+            app.UseMvc(routes =>
             {
-                await context.Response.WriteAsync("Hello World!");
+                routes.MapRoute(
+                    name: "StudentRoute",
+                    template: "{controller}/{action}/{id?}",
+                    defaults: new { controller = "Student", action = "Index" },
+                    constraints: new { id = "[0-9]+" });
             });
         }
     }
